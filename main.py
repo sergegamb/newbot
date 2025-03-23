@@ -16,6 +16,11 @@ from telegram.ext import (
 )
 from bs4 import BeautifulSoup
 import sc
+from filters import filters_handler
+from decorators import log_message, log_query
+from views import index
+
+
 
 # Disable InsecureRequestWarning
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
@@ -30,33 +35,6 @@ logging.basicConfig(
 httpx_logger = logging.getLogger("httpx")
 httpx_logger.setLevel(logging.WARNING)  # Or logging.ERROR if you want to suppress even more
 
-
-def log_message(func):
-    """
-    Decorator to log incoming messages before calling the handler function.
-    """
-    async def wrapper(update: Update, context: ContextTypes.DEFAULT_TYPE):
-        logger.info(f"Received message: '{update.message.text}' from chat ID: {update.effective_chat.id}")
-        return await func(update, context)
-    return wrapper
-
-def log_query(func):
-    """
-    Decorator to log incoming queries before calling the handler function.
-    """
-    async def wrapper(update: Update, context: ContextTypes.DEFAULT_TYPE):
-        query = update.callback_query
-        logger.info(f"Received query: '{query.data}' from chat ID: {update.effective_chat.id}")
-        return await func(update, context)
-    return wrapper
-    
-def create_keyboard(requests):
-    keyboard = []
-    #TODO: add filtering
-    for request in requests:
-        keyboard.append(InlineKeyboardButton(f"{request.id} - {request.subject}", callback_data=f"request_{request.id}"))
-    #TODO: add pagination
-    return InlineKeyboardMarkup.from_column(keyboard)
 
 def create_request_keyboard(request):
     keyboard = [
@@ -76,16 +54,8 @@ def create_request_keyboard(request):
         InlineKeyboardButton(f"Open #{request.id} in browser", url=request.url),
         InlineKeyboardButton("<- Back", callback_data="back")]
     return InlineKeyboardMarkup.from_column(keyboard)
-        
-async def index(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    last_requests = sc.index()
-    requests_keyboard = create_keyboard(last_requests)
-    await context.bot.send_message(
-        chat_id=update.effective_chat.id,
-        text="I'm a bot, please talk to me!",
-        reply_markup=requests_keyboard
-    )
 
+        
 def construct_request_text(request):
     text = f"*{request.subject}*\n"
     if request.status:
@@ -103,9 +73,11 @@ def construct_request_text(request):
         text += f"\n{description}"
     return text
 
+
 @log_message
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await index(update, context)
+
 
 @log_query
 async def button(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -139,5 +111,6 @@ if __name__ == '__main__':
     application.add_handler(start_handler)
     application.add_handler(button_handler)
     application.add_handler(back_button_handler)
+    application.add_handler(filters_handler)
     
     application.run_polling()

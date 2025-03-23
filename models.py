@@ -9,7 +9,7 @@ class Technician(BaseModel):
     
 # 'status': {'color': '#efb116', 'name': 'На согласовании', 'id': '1201'}
 class Status(BaseModel):
-    color: str = Field(..., alias="color")
+    color: Optional[str] = Field(..., alias="color")
     name: str = Field(..., alias="name")
     id: str = Field(..., alias="id")
 
