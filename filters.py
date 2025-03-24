@@ -43,11 +43,13 @@ async def pick_filter_action(update: Update, context: ContextTypes.DEFAULT_TYPE)
     chosen_filter = update.callback_query.data
     await update.callback_query.answer(chosen_filter)
     if chosen_filter == "filter_all":
-        context.user_data["filter"] = "all"
+        context.user_data["filter"] = "all_requests"
     elif chosen_filter.startswith("filter_my"):
-        context.user_data["filter"] = "my"
+        context.user_data["filter"] = "my_requests"
     elif chosen_filter == "filter_all_my_groups":
-        context.user_data["filter"] = "all_my_groups"
+        context.user_data["filter"] = "all_my_groups_requests"
+    context.user_data["page"] = 0
+    context.user_data["last"] = False
     await views.general_view(update, context)
     return ConversationHandler.END
 

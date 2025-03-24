@@ -31,6 +31,25 @@ class Request(BaseModel):
     @property
     def url(self):
         return "https://support.agneko.com/WorkOrder.do?woMode=viewWO&woID=" + self.id.__str__()
+
+    @property
+    def emoji(self):
+        if self.status.name == "Открыта":
+            return "🔴"
+        if self.status.name == "Запланирована":
+            return "🔵"
+        if self.status.name == "Выполнена":
+            return "🟣"
+        if self.status.name == "Назначена":
+            return "⚪️"
+        if self.status.name == "В работе":
+            return "🟠"
+        if self.status.name == "Ожидание информации":
+            return "🟢"
+        if self.status.name == "На согласовании":
+            return "🟡"
+        return "-"
+
     
 class ListInfo(BaseModel):
     total_count: int = Field(..., alias="total_count")

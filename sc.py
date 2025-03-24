@@ -26,7 +26,7 @@ def index():
         requests_json = get_last_requests(os.environ["API_URL"])
         response_status = requests_json.get("status")
         list_info = requests_json.get("list_info")
-        requests = requests_json.get("requests")
+        requests = requests_json.get("requests")[:ROW_COUNT]
         for request in requests:
             yield Request(**request)
     except Exception as e:
@@ -51,7 +51,6 @@ def show(request_id: int):
         response_status = request_json.get("status")
         list_info = request_json.get("list_info")
         request = request_json.get("request")
-        # print(request)
         return Request(**request)
     except Exception as e:
         print(f"Error during request: {e}")
@@ -72,6 +71,17 @@ def list(list_info):
     except Exception as e:
         print(f"Error during request: {e}")
         return None
+
+
+def list_last(page=0):
+    list_info = {
+        "row_count": ROW_COUNT,
+        "start_index": 1 + page * ROW_COUNT,
+    }
+    list_info = {
+        "list_info": list_info
+    }
+    return list(list_info)
 
 
 def list_technician(technician_id, page=0):
