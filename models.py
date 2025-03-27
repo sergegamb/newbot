@@ -1,5 +1,7 @@
 from pydantic import BaseModel, Field
 from typing import List, Optional
+from bs4 import BeautifulSoup
+
 
 
 # 'technician': {'email_id': 'mikhaylov@agneko.com', 'phone': None, 'name': 'Александр Михайлов', 
@@ -53,8 +55,36 @@ class Request(BaseModel):
     
 class ListInfo(BaseModel):
     total_count: int = Field(..., alias="total_count")
-    
+
+
 class RequestsResponse(BaseModel):
-    status: str = Field(..., alias="status")
+    response_status: str = Field(..., alias="response_status")
     list_info: ListInfo = Field(..., alias="list_info")
     requests: List[Request] = Field(..., alias="requests")
+
+
+class From(BaseModel):
+    name: str = Field(..., alias="name")
+    id: str = Field(..., alias="id")
+
+
+class SentTime(BaseModel):
+    display_value: str = Field(..., alias="display_value")
+
+
+class Conversation(BaseModel):
+    from_: From = Field(..., alias="from")
+    id: int = Field(..., alias="id")
+    sent_time: SentTime = Field(..., alias="sent_time")
+
+
+class Notification(BaseModel):
+    id: str = Field(..., alias="id")
+    description: str = Field(..., alias="description")
+
+    @property
+    def text(self):
+        description = self.description.replace("<br />", "\n")
+        soup = BeautifulSoup(description, 'html.parser')
+        description = soup.get_text()
+        return description

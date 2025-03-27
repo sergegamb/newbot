@@ -3,7 +3,7 @@ import os
 
 import requests as rq
 
-from models import Request
+from models import Request, Conversation, Notification
 from admin import TECHNICIANS, GROUPS
 
 
@@ -136,5 +136,36 @@ def list_technician_group(technician_id, page=0):
     return list(list_info)
 
 
+def get_request_conversation(request_id):
+    try:
+        url = os.environ["API_URL"] + f"/requests/{request_id}/conversations"
+        headers = {"authtoken" : os.environ["AUTH_TOKEN"]}
+        conversations_json = rq.get(url, headers=headers, verify=False).json()
+        response_status = conversations_json.get("request_status")
+        list_info = conversations_json.get("list_info")
+        conversations = conversations_json.get("conversations")
+        for conversation in conversations:
+            yield Conversation(**conversation)
+    except Exception as e:
+        print(f"Error during request: {e}")
+        return None
+
+
+def view_notification(request_id, notification_id) -> Notification:
+    try:
+        url = os.environ["API_URL"] + f"/requests/{request_id}/notifications/{notification_id}"
+        headers = {"authtoken" : os.environ["AUTH_TOKEN"]}
+        notification_json = rq.get(url, headers=headers, verify=False).json()
+        notification = notification_json.get("notification")
+        return Notification(**notification)
+    except Exception as e:
+        print(f"Error during request: {e}")
+        return None
+        
+        
+        
+        
 if __name__ == "__main__":
-    pass
+    request_id = 4662
+    notifications = get_request_conversation(request_id)
+    # print(notifications)
