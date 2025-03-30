@@ -23,6 +23,7 @@ import sc
 from filters import filters_handler
 from decorators import log_message, log_query
 import views
+from task import task_handler
 
 
 # Disable InsecureRequestWarning
@@ -188,6 +189,7 @@ def main():
     application.add_handler(previous_button_handler)
     application.add_handler(conversation_handler)
     application.add_handler(description_button_handler)
+    application.add_handler(task_handler)
     
     application.run_polling()
 

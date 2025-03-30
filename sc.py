@@ -161,10 +161,31 @@ def view_notification(request_id, notification_id) -> Notification:
     except Exception as e:
         print(f"Error during request: {e}")
         return None
-        
-        
-        
-        
+
+
+def add_task(technician, title):
+    task = {
+        "task": {
+            "title": title,
+            "owner": {
+                "name": technician
+            },
+            "status": {
+                "name": "Открыта"
+            },
+        }
+    }
+    try:
+        url = os.environ["API_URL"] + "/tasks"
+        headers = {"authtoken" : os.environ["AUTH_TOKEN"]}
+        params = {"input_data": json.dumps(task)}
+        response = rq.post(url, headers=headers, params=params, verify=False)
+        return response.json()
+    except Exception as e:
+        print(f"Error during request: {e}")
+        return None
+
+
 if __name__ == "__main__":
     request_id = 4662
     notifications = get_request_conversation(request_id)
