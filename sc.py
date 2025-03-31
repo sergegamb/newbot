@@ -163,7 +163,7 @@ def view_notification(request_id, notification_id) -> Notification:
         return None
 
 
-def add_task(technician, title):
+def add_task(request_id, technician, title):
     task = {
         "task": {
             "title": title,
@@ -176,7 +176,7 @@ def add_task(technician, title):
         }
     }
     try:
-        url = os.environ["API_URL"] + "/tasks"
+        url = os.environ["API_URL"] + f"/requests/{request_id}/tasks"
         headers = {"authtoken" : os.environ["AUTH_TOKEN"]}
         params = {"input_data": json.dumps(task)}
         response = rq.post(url, headers=headers, params=params, verify=False)

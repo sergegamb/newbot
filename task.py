@@ -24,15 +24,15 @@ import sc
 SELECTING_TECHNICIAN, TYPING_TASK_TITLE = range(2)
 
 
-@log_message
-async def task_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+@log_query
+async def add_task_button(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Starts the task creation process."""
     keyboard = [
         [InlineKeyboardButton(name, callback_data=str(user_id))]
         for user_id, name in TECHNICIANS.items()
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
-    await update.message.reply_text(
+    await update.callback_query.edit_message_text(
         "Please select a technician to assign the task to:", reply_markup=reply_markup
     )
     return SELECTING_TECHNICIAN
@@ -64,9 +64,10 @@ async def task_title_received(update: Update, context: ContextTypes.DEFAULT_TYPE
     technician_id = context.user_data.get("technician_id")
     technician_name = context.user_data.get("technician_name")
 
-    task = sc.add_task(technician_name, task_title)
+    request_id = context.user_data.get("request_id")
+    task = sc.add_task(request_id, technician_name, task_title)
     task_id = task.get("task").get("id")
-    link = f"https://support.agneko.com/ui/tasks?mode=detail&taskId={task_id}"
+    link = f"https://support.agneko.com/ui/tasks?mode=detail&from=showAllTasks&module=request&taskId={task_id}&moduleId={request_id}"
     button = InlineKeyboardButton("Open in browser", url=link)
     keyboard = InlineKeyboardMarkup([[button]])
     
@@ -88,7 +89,7 @@ async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
 
 # Create the conversation handler
 task_handler = ConversationHandler(
-    entry_points=[CommandHandler("task", task_command)],
+    entry_points=[CallbackQueryHandler(add_task_button, pattern="add_task")],
     states={
         SELECTING_TECHNICIAN: [
             CallbackQueryHandler(technician_selected, pattern=r"^\d+$")

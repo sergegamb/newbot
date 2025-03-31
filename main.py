@@ -60,6 +60,7 @@ def create_request_keyboard(request):
     for conversation in request_conversations:
         keyboard.append([InlineKeyboardButton(f"{conversation.from_.name}  {conversation.sent_time.display_value}", callback_data=f"conversation_{conversation.id}")])
     
+    keyboard.append([InlineKeyboardButton("Add task" , callback_data="add_task")])
     keyboard.append([InlineKeyboardButton("<- Back", callback_data="back"),
         InlineKeyboardButton(f"Open #{request.id} in browser", url=request.url)])
     return InlineKeyboardMarkup(keyboard)
