@@ -3,3 +3,4 @@ venv
 .vscode
 __pycache__
 admin.py
+test.py

@@ -1,5 +1,7 @@
+import time
 import logging
 import os
+import datetime
 
 from telegram import (
     Update,
@@ -21,7 +23,7 @@ import sc
 
 
 # Conversation states
-SELECTING_TECHNICIAN, TYPING_TASK_TITLE = range(2)
+SELECTING_TECHNICIAN, TYPING_TASK_TITLE, TYPING_DUE_DATE = range(3)
 
 
 @log_query
@@ -49,12 +51,30 @@ async def technician_selected(update: Update, context: ContextTypes.DEFAULT_TYPE
         context.user_data["technician_id"] = technician_id
         context.user_data["technician_name"] = technician_name
         await query.edit_message_text(
-            text=f"You selected {technician_name}. Now, please send the task title."
+            text=f"You selected {technician_name}. Now, please send the due date in days."
         )
-        return TYPING_TASK_TITLE
+        return TYPING_DUE_DATE
     else:
         await query.edit_message_text(text="Invalid technician selected.")
         return ConversationHandler.END
+
+
+@log_message
+async def due_date_received(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    """Stores the due date and asks for the task title."""
+    try:
+        due_date_days = int(update.message.text)
+        if due_date_days <= 0:
+            await update.message.reply_text("Due date must be a positive number of days.")
+            return TYPING_DUE_DATE
+        context.user_data["due_date_days"] = due_date_days
+        await update.message.reply_text(
+            text=f"Due date set to {due_date_days} days. Now, please send the task title."
+        )
+        return TYPING_TASK_TITLE
+    except ValueError:
+        await update.message.reply_text("Invalid input. Please enter a number of days.")
+        return TYPING_DUE_DATE
 
 
 @log_message
@@ -64,19 +84,19 @@ async def task_title_received(update: Update, context: ContextTypes.DEFAULT_TYPE
     technician_id = context.user_data.get("technician_id")
     technician_name = context.user_data.get("technician_name")
 
-    request_id = context.user_data.get("request_id")
-    task = sc.add_task(request_id, technician_name, task_title)
-    task_id = task.get("task").get("id")
-    link = f"https://support.agneko.com/ui/tasks?mode=detail&from=showAllTasks&module=request&taskId={task_id}&moduleId={request_id}"
-    button = InlineKeyboardButton("Open in browser", url=link)
-    keyboard = InlineKeyboardMarkup([[button]])
+    days = context.user_data.get("due_date_days", 0)
+    now = datetime.datetime.now()
+    due_date = now + datetime.timedelta(days=days)
+    due_date = time.mktime(due_date.timetuple())
+    due_date = int(due_date * 1000)
     
-    # Here you would typically save the task to a database or send it to an API
+    request_id = context.user_data.get("request_id")
+    task = sc.add_task(request_id, technician_name, task_title, due_date)
+    
     await update.message.reply_text(
         f"Task '{task_title}' assigned to {technician_name} (ID: {technician_id}).",
-        reply_markup=keyboard
+        reply_markup=task.keyboard
     )
-    # Clear user data
     context.user_data.clear()
     return ConversationHandler.END
 
@@ -93,6 +113,9 @@ task_handler = ConversationHandler(
     states={
         SELECTING_TECHNICIAN: [
             CallbackQueryHandler(technician_selected, pattern=r"^\d+$")
+        ],
+        TYPING_DUE_DATE: [
+            MessageHandler(filters.TEXT & ~filters.COMMAND, due_date_received)
         ],
         TYPING_TASK_TITLE: [MessageHandler(filters.TEXT & ~filters.COMMAND, task_title_received)],
     },

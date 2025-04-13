@@ -3,7 +3,7 @@ import os
 
 import requests as rq
 
-from models import Request, Conversation, Notification
+from models import Request, Conversation, Notification, Task
 from admin import TECHNICIANS, GROUPS
 
 
@@ -39,15 +39,7 @@ def get_request(request_id: int):
         url = os.environ["API_URL"] + f"/requests/{request_id}"
         headers = {"authtoken" : os.environ["AUTH_TOKEN"]}
         response = rq.get(url, headers=headers, verify=False)
-        return response.json()
-    except:
-        print("Error during request")
-        return None
-
-
-def show(request_id: int):
-    try:
-        request_json = get_request(request_id)
+        request_json = response.json()
         response_status = request_json.get("status")
         list_info = request_json.get("list_info")
         request = request_json.get("request")
@@ -57,7 +49,7 @@ def show(request_id: int):
         return None
 
 
-def list(list_info):
+def list_requests(list_info):
     try:
         url = os.environ["API_URL"] + "/requests"
         headers = {"authtoken" : os.environ["AUTH_TOKEN"]}
@@ -73,7 +65,7 @@ def list(list_info):
         return None
 
 
-def list_last(page=0):
+def list_all_requests(page=0):
     list_info = {
         "row_count": ROW_COUNT,
         "start_index": 1 + page * ROW_COUNT,
@@ -81,10 +73,10 @@ def list_last(page=0):
     list_info = {
         "list_info": list_info
     }
-    return list(list_info)
+    return list_requests(list_info)
 
 
-def list_technician(technician_id, page=0):
+def list_technician_pending_requests(technician_id, page=0):
     list_info = {
         "row_count": ROW_COUNT,
         "start_index": 1 + page * ROW_COUNT,
@@ -117,10 +109,10 @@ def list_technician(technician_id, page=0):
     search_criteria = {"search_criteria": search_criteria}
     list_info.update(search_criteria)
     list_info = {"list_info": list_info}
-    return list(list_info)
+    return list_requests(list_info)
 
 
-def list_technician_group(technician_id, page=0):
+def list_technician_group_requests(technician_id, page=0):
     list_info = {
         "row_count": ROW_COUNT,
         "start_index": 1 + page * ROW_COUNT,
@@ -133,7 +125,7 @@ def list_technician_group(technician_id, page=0):
     search_criteria = {"search_criteria": search_criteria}
     list_info.update(search_criteria)
     list_info = {"list_info": list_info}
-    return list(list_info)
+    return list_requests(list_info)
 
 
 def get_request_conversation(request_id):
@@ -163,7 +155,7 @@ def view_notification(request_id, notification_id) -> Notification:
         return None
 
 
-def add_task(request_id, technician, title):
+def add_task(request_id, technician, title, due_date):
     task = {
         "task": {
             "title": title,
@@ -173,20 +165,101 @@ def add_task(request_id, technician, title):
             "status": {
                 "name": "Открыта"
             },
+            "scheduled_end_time": {
+                "value": due_date
+            },
         }
     }
     try:
         url = os.environ["API_URL"] + f"/requests/{request_id}/tasks"
         headers = {"authtoken" : os.environ["AUTH_TOKEN"]}
         params = {"input_data": json.dumps(task)}
-        response = rq.post(url, headers=headers, params=params, verify=False)
-        return response.json()
+        response_json = rq.post(url, headers=headers, params=params, verify=False).json()
+        task = response_json.get("task")
+        return Task(**task)
+    except Exception as e:
+        print(f"Error during request: {e}")
+        return None
+
+
+def list_tasks(list_info):
+    try:
+        url = os.environ["API_URL"] + "/tasks"
+        headers = {"authtoken" : os.environ["AUTH_TOKEN"]}
+        params = {"input_data": json.dumps(list_info)}
+        tasks_json = rq.get(url, headers=headers, params=params, verify=False).json()
+        response_status = tasks_json.get("status")
+        list_info = tasks_json.get("list_info")
+        tasks = tasks_json.get("tasks")
+        for task in tasks:
+            yield Task(**task)
+    except Exception as e:
+        print(f"Error during request: {e}")
+        return None
+
+
+def list_all_tasks(page=0):
+    list_info = {
+        "row_count": ROW_COUNT,
+        "start_index": 1 + page * ROW_COUNT,
+        "sort_order": "desc",
+        "sort_field": "id",
+    }
+    list_info = {"list_info": list_info}
+    return list_tasks(list_info)
+
+
+def list_my_tasks(technician_id, page=0):
+    list_info = {
+        "row_count": ROW_COUNT,
+        "start_index": 1 + page * ROW_COUNT,
+        "sort_order": "desc",
+        "sort_field": "id",
+    }
+    status_not_compleate = {
+        "field": "status.name",
+        "condition": "is not",
+        "value": "Выполнена",
+        "logical_operator": "AND"
+    }
+    status_not_canceled = {
+        "field": "status.name",
+        "condition": "is not",
+        "value": "Отменена",
+        "logical_operator": "AND"
+    }
+    status_not_closed = {
+        "field": "status.name",
+        "condition": "is not",
+        "value": "Закрыта",
+        "logical_operator": "AND"
+    }
+    status_exclude = [status_not_closed, status_not_canceled, status_not_compleate]
+    search_criteria = {
+        "field": "technician.name",
+        "condition": "is",
+        "value": TECHNICIANS[technician_id],
+        "children": status_exclude
+    }
+    search_criteria = {"search_criteria": search_criteria}
+    list_info.update(search_criteria)
+    list_info = {"list_info": list_info}
+    return list_tasks(list_info)
+
+
+def get_request_task(request_id, task_id):
+    try:
+        url = os.environ["API_URL"]
+        headers = {"authtoken" : os.environ["AUTH_TOKEN"]}
+        url = url + f"/requests/{request_id}/tasks/{task_id}"
+        response = rq.get(url, headers=headers, verify=False)
+        task_json = response.json()
+        task = task_json.get("task")
+        return Task(**task)
     except Exception as e:
         print(f"Error during request: {e}")
         return None
 
 
 if __name__ == "__main__":
-    request_id = 4662
-    notifications = get_request_conversation(request_id)
-    # print(notifications)
+    pass
