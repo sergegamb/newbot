@@ -215,6 +215,8 @@ class Task(BaseModel):
     @property
     def keyboard(self):
         keyboard = []
+        if self.description is None:
+            keyboard.append([InlineKeyboardButton("Provide description", callback_data=f"task_description_add")])
         keyboard.append([InlineKeyboardButton("Back", callback_data=f"back"),
                          InlineKeyboardButton("Open in browser", url=self.url)])
         return InlineKeyboardMarkup(keyboard)

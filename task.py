@@ -23,7 +23,7 @@ import sc
 
 
 # Conversation states
-SELECTING_TECHNICIAN, TYPING_TASK_TITLE, TYPING_DUE_DATE = range(3)
+SELECTING_TECHNICIAN, TYPING_TASK_TITLE, TYPING_DUE_DATE, TYPING_TASK_DESCRIPTION = range(4)
 
 
 @log_query
@@ -108,7 +108,7 @@ async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
 
 
 # Create the conversation handler
-task_handler = ConversationHandler(
+task_add_handler = ConversationHandler(
     entry_points=[CallbackQueryHandler(add_task_button, pattern="add_task")],
     states={
         SELECTING_TECHNICIAN: [
@@ -118,6 +118,51 @@ task_handler = ConversationHandler(
             MessageHandler(filters.TEXT & ~filters.COMMAND, due_date_received)
         ],
         TYPING_TASK_TITLE: [MessageHandler(filters.TEXT & ~filters.COMMAND, task_title_received)],
+    },
+    fallbacks=[CommandHandler("cancel", cancel)],
+)
+
+
+@log_query
+async def add_task_description_button(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    """Starts the task description adding process."""
+    query = update.callback_query
+    await query.answer(query.data)
+    await update.callback_query.edit_message_text(
+        "Please send the task description:"
+    )
+    return TYPING_TASK_DESCRIPTION
+
+
+@log_message
+async def task_description_received(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    """Stores the task description and ends the conversation."""
+    task_description = update.message.text
+    task_id = context.user_data.get("task_id")
+    request_id = context.user_data.get("request_id")
+
+    task = sc.add_task_description(request_id, task_id, task_description)
+
+    await update.message.reply_text(
+        text=task.text,
+        reply_markup=task.keyboard
+    )
+    context.user_data.clear()
+    return ConversationHandler.END
+
+
+task_description_handler = ConversationHandler(
+    entry_points=[CallbackQueryHandler(add_task_description_button, pattern="task_description_add")],
+    states={
+        TYPING_TASK_DESCRIPTION: [MessageHandler(filters.TEXT & ~filters.COMMAND, task_description_received)],
+    },
+    fallbacks=[CommandHandler("cancel", cancel)],
+)
+
+task_description_handler = ConversationHandler(
+    entry_points=[CallbackQueryHandler(add_task_description_button, pattern="task_description_add")],
+    states={
+        TYPING_TASK_DESCRIPTION: [MessageHandler(filters.TEXT & ~filters.COMMAND, task_description_received)],
     },
     fallbacks=[CommandHandler("cancel", cancel)],
 )

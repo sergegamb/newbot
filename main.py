@@ -23,7 +23,7 @@ import sc
 from filters import filters_handler
 from decorators import log_message, log_query
 import views
-from task import task_handler
+from task import task_add_handler, task_description_handler
 
 
 # Disable InsecureRequestWarning
@@ -125,6 +125,8 @@ async def request_task_button(update: Update, context: ContextTypes.DEFAULT_TYPE
     task_id = query.data.split("_")[2]
     request_id = query.data.split("_")[1]
     task = sc.get_request_task(request_id, task_id)
+    context.user_data["task_id"] = task_id
+    context.user_data["request_id"] = request_id
     await query.edit_message_text(
         text=task.text,
         reply_markup=task.keyboard,
@@ -156,8 +158,9 @@ def main():
     application.add_handler(previous_button_handler)
     application.add_handler(conversation_handler)
     application.add_handler(description_button_handler)
-    application.add_handler(task_handler)
+    application.add_handler(task_add_handler)
     application.add_handler(request_task_button_handler)
+    application.add_handler(task_description_handler)
     
     application.run_polling()
 

@@ -259,6 +259,27 @@ def get_request_task(request_id, task_id):
     except Exception as e:
         print(f"Error during request: {e}")
         return None
+    
+
+def add_task_description(request_id, task_id, description):
+    try:
+        url = os.environ["API_URL"]
+        headers = {"authtoken" : os.environ["AUTH_TOKEN"]}
+        url = url + f"/requests/{request_id}/tasks/{task_id}"
+        input_data = {
+            "task": {
+                "description": description
+            }
+        }
+        list_info = {"input_data": json.dumps(input_data)}
+        response = rq.put(url, headers=headers, data=list_info, verify=False)
+        task_json = response.json()
+        task = task_json.get("task")
+        return Task(**task)
+    except Exception as e:
+        print(f"Error during request: {e}")
+        return None
+
 
 
 if __name__ == "__main__":
