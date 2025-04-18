@@ -281,6 +281,12 @@ def add_task_description(request_id, task_id, description):
         return None
 
 
-
-if __name__ == "__main__":
-    pass
+def list_request_worklogs(request_id):
+    try:
+        url = os.environ["API_URL"] + f"/requests/{request_id}/worklogs"
+        headers = {"authtoken" : os.environ["AUTH_TOKEN"]}
+        worklogs_json = rq.get(url, headers=headers, verify=False).json()
+        print(json.dumps(worklogs_json, indent=4))
+    except Exception as e:
+        print(f"Error during request: {e}")
+        return None

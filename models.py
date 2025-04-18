@@ -79,29 +79,23 @@ class Request(BaseModel):
     @property
     def keyboard(self):
         keyboard = []
-        keyboard.append([InlineKeyboardButton("Description", callback_data=f"description"),
-                        InlineKeyboardButton("Add task" , callback_data="add_task")])
-            #TODO: add quick actions
-            #TODO: add assign dialog
-            #TODO: add reply option
-            #TODO: add edit menu
-            #TODO: add add note dialog
-            #TODO: add menu
-                #TODO: add Properties
-                #TODO: add Resolution
-                #TODO: add Time entry
-                #TODO: add History
-                #TODO: add Tasks
-                #TODO: add Approvals
+        keyboard.append([InlineKeyboardButton("Add task", callback_data="add_task")])
         request_conversations = sc.get_request_conversation(self.id)
-        for conversation in request_conversations:
-            keyboard.append([InlineKeyboardButton(f"{conversation.from_.name}  {conversation.sent_time.display_value}", callback_data=f"conversation_{conversation.id}")])
-        
-        keyboard.append([])
+        if len(list(request_conversations)) > 0:
+            keyboard.append([InlineKeyboardButton("Conversations", callback_data=f"show_conversations_{self.id}")])
         keyboard.append([InlineKeyboardButton("<- Back", callback_data="back"),
-            InlineKeyboardButton(f"Open #{self.id} in browser", url=self.url)])
+                         InlineKeyboardButton(f"Open #{self.id} in browser", url=self.url)])
         return InlineKeyboardMarkup(keyboard)
 
+    @property
+    def conversations_keyboard(self):
+        keyboard = []
+        request_conversations = sc.get_request_conversation(self.id)
+        for conversation in request_conversations:
+            keyboard.append([InlineKeyboardButton(f"{conversation.from_.name}  {conversation.sent_time.display_value}",
+                                                 callback_data=f"conversation_{conversation.id}")])
+        keyboard.append([InlineKeyboardButton("<- Back to Request", callback_data=f"request_{self.id}")])
+        return InlineKeyboardMarkup(keyboard)
     
 class ListInfo(BaseModel):
     total_count: int = Field(..., alias="total_count")

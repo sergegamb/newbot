@@ -57,6 +57,17 @@ async def request_button(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         reply_markup=request.keyboard,
         parse_mode="Markdown"
     )
+
+@log_query
+async def show_conversations_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer(query.data)
+    request_id = query.data.split("_")[2]
+    request = sc.get_request(request_id)
+    await query.edit_message_text(
+        text="Conversations:",
+        reply_markup=request.conversations_keyboard,
+    )
     
 @log_query
 async def back_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -101,7 +112,7 @@ async def conversation_button(update: Update, context: ContextTypes.DEFAULT_TYPE
     notification = sc.view_notification(request_id, conversation_id)
     await query.edit_message_text(
         text=notification.text[:2048],
-        reply_markup=request.keyboard,
+        reply_markup=request.conversations_keyboard,
     )
 
 
@@ -140,6 +151,7 @@ def main():
     # echo_handler = MessageHandler(filters.TEXT & (~filters.COMMAND), echo)
     start_handler = CommandHandler('start', start)
     button_handler = CallbackQueryHandler(request_button, pattern="request_")
+    show_conversations_handler = CallbackQueryHandler(show_conversations_button, pattern="show_conversations_")
     back_button_handler = CallbackQueryHandler(back_button, pattern="back")
     refresh_button_handler = CallbackQueryHandler(refresh_button, pattern="refresh")
     next_button_handler = CallbackQueryHandler(next_button, pattern="next")
@@ -151,6 +163,7 @@ def main():
     # application.add_handler(echo_handler)
     application.add_handler(start_handler)
     application.add_handler(button_handler)
+    application.add_handler(show_conversations_handler)
     application.add_handler(back_button_handler)
     application.add_handler(filters_handler)
     application.add_handler(refresh_button_handler)
