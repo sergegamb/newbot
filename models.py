@@ -83,6 +83,7 @@ class Request(BaseModel):
         request_conversations = sc.get_request_conversation(self.id)
         if len(list(request_conversations)) > 0:
             keyboard.append([InlineKeyboardButton("Conversations", callback_data=f"show_conversations_{self.id}")])
+        keyboard.append([InlineKeyboardButton("Worklogs", callback_data=f"show_worklogs_{self.id}")])        
         keyboard.append([InlineKeyboardButton("<- Back", callback_data="back"),
                          InlineKeyboardButton(f"Open #{self.id} in browser", url=self.url)])
         return InlineKeyboardMarkup(keyboard)
@@ -97,6 +98,18 @@ class Request(BaseModel):
         keyboard.append([InlineKeyboardButton("<- Back to Request", callback_data=f"request_{self.id}")])
         return InlineKeyboardMarkup(keyboard)
     
+    @property
+    def worklogs_keyboard(self):
+        keyboard = []
+        worklogs = sc.list_request_worklogs(self.id)
+        keyboard.append([InlineKeyboardButton("Add worklog", callback_data="add_worklog")])
+        for worklog in worklogs:
+            if worklog.time_spent.minutes < 10:
+                worklog.time_spent.minutes = "0" + str(worklog.time_spent.minutes)
+            keyboard.append([InlineKeyboardButton(f"{worklog.owner.name} - {worklog.time_spent.hours}:{worklog.time_spent.minutes}", callback_data=f"worklog_{worklog.id}")])
+        keyboard.append([InlineKeyboardButton("<- Back to Request", callback_data=f"request_{self.id}")])
+        return InlineKeyboardMarkup(keyboard)
+
 class ListInfo(BaseModel):
     total_count: int = Field(..., alias="total_count")
 
@@ -214,3 +227,32 @@ class Task(BaseModel):
         keyboard.append([InlineKeyboardButton("Back", callback_data=f"back"),
                          InlineKeyboardButton("Open in browser", url=self.url)])
         return InlineKeyboardMarkup(keyboard)
+
+
+class TimeSpent(BaseModel):
+    hours: int = Field(..., alias="hours")
+    minutes: int = Field(..., alias="minutes")
+
+
+class WTechnician(BaseModel):
+    name: str = Field(..., alias="name")
+    id: str = Field(..., alias="id")
+ 
+
+class Worklog(BaseModel):
+    id: int = Field(..., alias="id")
+    description: Optional[str] = Field(None, alias="description")
+    owner: WTechnician = Field(..., alias="owner")
+    time_spent: TimeSpent = Field(..., alias="time_spent")
+    request: TRequest = Field(..., alias="request")
+
+    @property
+    def text(self):
+        text = f"*{self.owner.name}*\n"
+        print(self.time_spent.minutes)
+        if self.time_spent.minutes < 10:
+            self.time_spent.minutes = "0" + str(self.time_spent.minutes)
+        if self.description:
+            text += f"Description: {self.description}\n"
+        text += f"Time spent: {self.time_spent.hours}:{self.time_spent.minutes}"
+        return text

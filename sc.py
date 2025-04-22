@@ -3,7 +3,7 @@ import os
 
 import requests as rq
 
-from models import Request, Conversation, Notification, Task
+from models import Request, Conversation, Notification, Task, Worklog
 from admin import TECHNICIANS, GROUPS
 
 
@@ -281,12 +281,51 @@ def add_task_description(request_id, task_id, description):
         return None
 
 
-def list_request_worklogs(request_id):
+def list_request_worklogs(request_id, page=0):
     try:
         url = os.environ["API_URL"] + f"/requests/{request_id}/worklogs"
         headers = {"authtoken" : os.environ["AUTH_TOKEN"]}
-        worklogs_json = rq.get(url, headers=headers, verify=False).json()
-        print(json.dumps(worklogs_json, indent=4))
+        list_info = {
+            "row_count": ROW_COUNT,
+            "start_index": 1 + page * ROW_COUNT,
+            "sort_order": "desc",
+            "sort_field": "start_time",
+        }
+        list_info = {"list_info": list_info}
+        params = {"input_data": json.dumps(list_info)}
+        worklogs_json = rq.get(url, headers=headers, params=params, verify=False).json()
+        response_status = worklogs_json.get("request_status")
+        list_info = worklogs_json.get("list_info")
+        worklogs = worklogs_json.get("worklogs")
+        for worklog in worklogs:
+            yield Worklog(**worklog)
+    except Exception as e:
+        print(f"Error during request: {e}")
+        return None
+
+
+def add_worklog(request_id, owner, description, hours, minutes):
+    try:
+        url = os.environ["API_URL"] + f"/requests/{request_id}/worklogs"
+        headers = {"authtoken" : os.environ["AUTH_TOKEN"]}
+        input_data = {
+            "worklog": {
+                "description": description,
+                "time_spent": {
+                    "hours": hours,
+                    "minutes": minutes
+                },
+                "owner": {
+                    "name": owner
+                }
+            }
+        }
+        list_info = {"input_data": json.dumps(input_data)}
+        response = rq.post(url, headers=headers, data=list_info, verify=False)
+        worklog_json = response.json()
+        print(worklog_json)
+        worklog = worklog_json.get("worklog")
+        return Worklog(**worklog)
     except Exception as e:
         print(f"Error during request: {e}")
         return None

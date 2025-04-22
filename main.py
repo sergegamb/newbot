@@ -24,6 +24,7 @@ from filters import filters_handler
 from decorators import log_message, log_query
 import views
 from task import task_add_handler, task_description_handler
+from worklog_dialog import worklog_add_handler
 
 
 # Disable InsecureRequestWarning
@@ -100,8 +101,8 @@ async def previous_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
     page = context.user_data.get("page", 0)
     context.user_data["page"] = max(page - 1, 0)
     await views.general_view(update, context)
-    
-    
+
+
 @log_query
 async def conversation_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
@@ -145,6 +146,42 @@ async def request_task_button(update: Update, context: ContextTypes.DEFAULT_TYPE
     )
 
 
+@log_query
+async def show_worklogs_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer(query.data)
+    request_id = query.data.split("_")[2]
+    request = sc.get_request(request_id)
+    await query.edit_message_text(
+        text="Worklogs:",
+        reply_markup=request.worklogs_keyboard,
+    )
+
+@log_query
+async def worklog_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer(query.data)
+    worklog_id = query.data.split("_")[1]
+    request_id = context.user_data.get("request_id")
+    worklogs = sc.list_request_worklogs(request_id)
+    worklog = None
+    for w in worklogs:
+        if w.id == int(worklog_id):
+            worklog = w
+            break
+    if worklog:
+        keyboard = [InlineKeyboardButton("Back", callback_data=f"show_worklogs_{request_id}")]
+        await query.edit_message_text(
+            text=worklog.text,
+            reply_markup=InlineKeyboardMarkup([keyboard]),
+            parse_mode="Markdown",
+        )
+    else:
+        await query.edit_message_text(
+            text="Worklog not found.",
+        )
+
+
 def main():
     application = ApplicationBuilder().token(os.environ["BOT_TOKEN"]).build()
     
@@ -159,6 +196,8 @@ def main():
     conversation_handler = CallbackQueryHandler(conversation_button, pattern="conversation_")
     description_button_handler = CallbackQueryHandler(description_button, pattern="description")
     request_task_button_handler = CallbackQueryHandler(request_task_button, pattern="requesttask_")
+    show_worklogs_handler = CallbackQueryHandler(show_worklogs_button, pattern="show_worklogs_")
+    worklog_handler = CallbackQueryHandler(worklog_button, pattern="worklog_")
     
     # application.add_handler(echo_handler)
     application.add_handler(start_handler)
@@ -174,6 +213,9 @@ def main():
     application.add_handler(task_add_handler)
     application.add_handler(request_task_button_handler)
     application.add_handler(task_description_handler)
+    application.add_handler(show_worklogs_handler)
+    application.add_handler(worklog_add_handler)
+    application.add_handler(worklog_handler)
     
     application.run_polling()
 
